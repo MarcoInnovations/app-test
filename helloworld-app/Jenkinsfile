@@ -31,7 +31,7 @@ pipeline {
         stage('Check/create $PRODUCT_DOMAIN_NAME namespace') {
             steps {
                 dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
-                    withProxyEnv() {
+//                    withProxyEnv() {
                         withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
                             script {
                                 sh '''
@@ -43,22 +43,15 @@ pipeline {
                                 fi
                                 '''
                             }
-                        }
+//                        }
                     }
-                }
-            }
-        }
-        stage('list environment variables') {
-            steps {
-                script {
-                    sh "env > /tmp/env-app.txt && cat /tmp/env-app.txt"
                 }
             }
         }
         stage('Deploy application') {
             steps {
                 dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
-                    withProxyEnv() {
+    //                withProxyEnv() {
                         withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
                             script {
     //                            // def MY_APP_NAME_PARAMETERS = readYaml file: '$PRODUCT_DOMAIN_NAME-parameters.yaml'
@@ -73,12 +66,12 @@ pipeline {
                                 
                                 sh """
                                 #!/bin/bash
-                                helm repo add mychart 'https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm_chart/helm-app'
+                                helm repo add app-demo 'https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm-app'
                                 helm repo update
-                                helm install --replace --wait --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME mychart/helloworld-app
+                                helm install --replace --wait --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME app-demo/helloworld-app
                                 """
                             }
-                        }
+//                        }
                     }
                 }
             }
