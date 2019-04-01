@@ -1,0 +1,110 @@
+#!groovy
+
+def K8S_FLAVOR = "eks"
+def MY_APP_NAME_PARAMETERS = "$PRODUCT_DOMAIN_NAME-parameters"
+
+pipeline {
+    agent any
+    stages {
+
+        stage('Get K8s cluster flavor') {
+            steps {
+                script {
+                    K8S_CLUSTER_NAME = "arn:aws:eks:$AWS_REGION:$AWS_APPLICATION_ACCOUNT_NUMBER:cluster/$AWS_REGION-$PRODUCT_DOMAIN_NAME-$ENVIRONMENT_TYPE"
+                }
+                println K8S_CLUSTER_NAME
+            }
+        }
+
+        stage('Switch kubectl context to app-account') {
+            steps {
+                dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
+                    withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                        script {
+                            sh "kubectl config use-context $K8S_CLUSTER_NAME"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Check/create $PRODUCT_DOMAIN_NAME namespace') {
+            steps {
+                dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
+                    withProxyEnv() {
+                        withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                            script {
+                                sh '''
+                                #!/bin/bash -x
+                                if ! kubectl get namespace $PRODUCT_DOMAIN_NAME;
+                                then 
+                                    echo "Namespace for $PRODUCT_DOMAIN_NAME does not exist, creating..."
+                                    kubectl create namespace $PRODUCT_DOMAIN_NAME
+                                fi
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('list environment variables') {
+            steps {
+                script {
+                    sh "env > /tmp/env-app.txt && cat /tmp/env-app.txt"
+                }
+            }
+        }
+        stage('Deploy application') {
+            steps {
+                dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
+                    withProxyEnv() {
+                        withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                            script {
+    //                            // def MY_APP_NAME_PARAMETERS = readYaml file: '$PRODUCT_DOMAIN_NAME-parameters.yaml'
+                                // def jenkins_parameters = readYaml file: '/var/lib/jenkins/workspace/Infrastructure/Kubernetes_Install_EKS_Operations_Account/operations/us-east-1/env-eks/jenkins/parameters.yaml'
+
+                                // println "Getting domain name"
+                                // def r53DomainName = sh(script: "aws route53 get-hosted-zone --id " + jenkins_parameters.jxDomainHostedZoneID + " --output text --query 'HostedZone.Name'", 
+                                //                        returnStdout: true).trim().replaceAll("\\.\$", "")
+                                // def my_app_url = "$PRODUCT_DOMAIN_NAME." + jenkins_parameters.jxDomainAliasPrefix + "." + r53DomainName
+                                // println r53DomainName
+                                // println my_app_url
+                                
+                                sh """
+                                #!/bin/bash
+                                helm repo add mychart 'https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm_chart/helm-app'
+                                helm repo update
+                                helm install --replace --wait --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME mychart/helloworld-app
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void withProxyEnv(List envVars = [], def body) {
+    List proxies = []
+    List envVaraibles = ['GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no']
+    withAWSParameterStore(credentialsId: '', namePrefixes: '', naming: 'relative', path: "/$PRODUCT_DOMAIN_NAME/$ENVIRONMENT_TYPE", recursive: true, regionName: "$AWS_REGION") {
+        script {
+            if (env.PROXY_HTTP) {
+                proxies << "http_proxy=$PROXY_HTTP"
+            }
+            if (env.PROXY_HTTPS) {
+                proxies << "https_proxy=$PROXY_HTTPS"
+            }
+            if (env.PROXY_NO) {
+                proxies << "no_proxy=$PROXY_NO"
+            }
+            envVaraibles.addAll(proxies)
+        }
+    }
+    envVaraibles.addAll(envVars)
+    withEnv(envVaraibles) {
+        body.call()
+    }
+}
