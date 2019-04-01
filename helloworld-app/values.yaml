@@ -9,8 +9,8 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
-nameOverride: "helloworld-app"
-fullnameOverride: "helloworld-app"
+nameOverride: ""
+fullnameOverride: ""
 
 service:
   type: LoadBalancer
