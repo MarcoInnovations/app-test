@@ -11,6 +11,8 @@ In the pipeline, this repo is added to your helm installation (previously instal
 
 Before we can install, some household steps need to be performed: we are fetching the EKS name and switch to the proper context for kubectl.  Then we are assuming a cross-account role.  Both allow us to access the advanced EKS and deploy resources.  
 
+A Jenkinsfile is provided as a guideline to add to your CI/CD pipeline that will deploy the application.  
+
 The creation of the loadBalancer will take a minute or two before it is operational.  Also, we have seen DNS replication take up to 5 minutes, before the URL became active.  
 
 As example roll out can be found here: http://x-x-x.aws.cloud
