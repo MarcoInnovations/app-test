@@ -29,6 +29,10 @@ pipeline {
         }
 
         stage('Deploy application') {
+            input {
+                message "Should we continue with the deletion of resources (this action cannot be undone)?"
+                ok "Yes, delete the resource(s)."
+            }
             steps {
                 dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
                     withProxyEnv() {
@@ -37,7 +41,7 @@ pipeline {
                                 
                                 sh """
                                 #!/bin/bash
-                                helm delete --purge --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME
+                                helm delete --purge $PRODUCT_DOMAIN_NAME
                                 """
                             }
                         }
