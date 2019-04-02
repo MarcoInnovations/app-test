@@ -29,6 +29,7 @@ Same as with Helm, it may take a few minutes before all moving parts are in plac
 An example roll-out can be found here: http://y-y-y.aws.cloud
 
 Folder Structure:
+```
 | [root]
 |-- [helm-chart-helloworld]
     | helloworld-app.tgz
@@ -53,5 +54,4 @@ Folder Structure:
 |-- [yaml-helloworld-in-application-delete]
     | jenkinsfile
 | README.md
-
-
+```
