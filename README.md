@@ -15,7 +15,7 @@ A Jenkinsfile is provided as a guideline to add to your CI/CD pipeline that will
 
 The creation of the loadBalancer will take a minute or two before it is operational.  Also, we have seen DNS replication take up to 5 minutes, before the URL became active.  
 
-As example roll out can be found here: http://x-x-x.aws.cloud
+As example roll out can be found here: [https://app-test/helm-helloworld-app/Jenkinsfile]
 
 ⎈ Happy Helming! ⎈
 <br></br>
@@ -26,9 +26,10 @@ In this example, we choose another approach: we are fetching the EKS kubeconfig 
 
 Same as with Helm, it may take a few minutes before all moving parts are in place.  
 
-An example roll-out can be found here: http://y-y-y.aws.cloud
-
-Folder Structure:
+An example roll-out can be found here: [https://app-test/yaml-helloworld-in-application/jenkinsfile}
+      
+<br></br>
+### Folder Structure:
 ```
 | [root]
 |-- [helm-chart-helloworld]
