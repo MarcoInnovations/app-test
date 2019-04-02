@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
   {{ if eq .Values.service.type "LoadBalancer" }}
+  # For a deployment in transit, this is needed:
   # annotations:
   #   service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/0
   {{ end }}
