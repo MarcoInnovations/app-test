@@ -27,3 +27,31 @@ In this example, we choose another approach: we are fetching the EKS kubeconfig 
 Same as with Helm, it may take a few minutes before all moving parts are in place.  
 
 An example roll-out can be found here: http://y-y-y.aws.cloud
+
+Folder Structure:
+| [root]
+|-- [helm-chart-helloworld]
+    | helloworld-app.tgz
+    | index.yaml
+|-- [helm-helloworld-app]
+    |-- [templates]
+        | _helpers.tpl
+        | deployment.yaml
+        | ingress.yaml
+        | NOTES.txt
+        | service.yaml
+    | .helmignore
+    | Chart.yaml
+    | Jenkinsfile
+    | values.yaml
+|-- [helm-helloworld-app-delete]
+    | jenkinsfile
+|-- [helm-tra]
+    | index.yaml
+|-- [yaml-helloworld-in-application]
+    | jenkinsfile
+|-- [yaml-helloworld-in-application-delete]
+    | jenkinsfile
+| README.md
+
+
