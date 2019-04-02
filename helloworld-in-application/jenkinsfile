@@ -1,0 +1,152 @@
+#!groovy
+import groovy.json.JsonOutput
+
+def SERVICENAME = "helloworld-svc"
+def APPNAME = "helloworld"
+def APPPORT = 8081
+def command = $/kubectl get svc --field-selector metadata.name=${SERVICENAME} -o json | jq '.items[].status.loadBalancer.ingress[].hostname' --raw-output/$
+
+def serviceConfig = """
+apiVersion: v1
+kind: Service
+metadata:
+  name: $SERVICENAME
+  labels:
+    app: $APPNAME
+    name: $SERVICENAME
+spec:
+  ports:
+  - name: http
+    port: $APPPORT
+    protocol: TCP
+    targetPort: $APPPORT
+  selector:
+    app: $APPNAME
+  type: LoadBalancer
+"""
+def deploymentConfig = """
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $APPNAME
+  labels:
+    app: $APPNAME
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: $APPNAME
+  template:
+    metadata:
+      labels:
+        app: $APPNAME
+    spec:
+      containers:
+      - name: $APPNAME
+        image: 090011926616.dkr.ecr.us-east-1.amazonaws.com/demo_eks_python_webserver:latest
+        imagePullPolicy: "Always"
+        resources:
+          limits:
+            cpu: 400m
+            memory: 200Mi
+          requests:
+            cpu: 20m
+            memory: 100M
+        ports:
+        - containerPort: $APPPORT
+"""
+
+pipeline {
+    options {
+        timeout(time: 10, unit: 'MINUTES')
+    }
+    agent any
+    stages {
+        stage('Get AWS account information') {
+            steps {
+                withProxyEnv() {
+                    withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                        script {
+                            awsAccountNumber = sh script: "aws sts get-caller-identity --output text --query 'Account'", returnStdout: true
+                            println "Current AWS account number: ${awsAccountNumber}"
+                        }
+                    }
+                }
+            }
+        }
+        stage('Retrieve kubeconfig') {
+            steps {
+                withProxyEnv() {
+                    withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                        sh '''#!/bin/bash -x
+                        aws eks update-kubeconfig --name ${AWS_REGION}-${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE} --region ${AWS_REGION}
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Create Service') {
+            input {
+                message "Should we continue with the install?"
+                ok "Yes, we should."
+            }
+            steps {
+                withProxyEnv() {
+                    withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                        writeFile file: 'demo_service.yaml', text: serviceConfig
+                        sh 'kubectl create -f demo_service.yaml ||true'
+                    }
+                }
+            }
+        }
+        stage('Create Deployment') {
+            steps {
+                withProxyEnv() {
+                    withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                        writeFile file: 'demo_deployment.yaml', text: deploymentConfig
+                        sh 'kubectl create -f demo_deployment.yaml ||true'
+                    }
+                }
+            }
+        }
+        stage('Get URL for application') {
+            steps { 
+                sleep(time:20,unit:"SECONDS")
+                withProxyEnv() {
+                    withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                        script{
+                            try {
+                                LOADBALANCER = sh(returnStdout: true, script: command).trim()
+                                println "Access ${APPNAME} via: http://${LOADBALANCER}:${APPPORT}"
+                            } catch (Exception e) {
+                                result = "UNSTABLE" // make sure other exceptions are recorded as failure too
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+void withProxyEnv(List envVars = [], def body) {
+    List proxies = []
+    List envVariables = ['GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no']
+    withAWSParameterStore(credentialsId: '', namePrefixes: '', naming: 'relative', path: "/$PRODUCT_DOMAIN_NAME/$ENVIRONMENT_TYPE", recursive: true, regionName: "$AWS_REGION") {
+        script {
+            if (env.PROXY_HTTP) {
+                proxies << "http_proxy=$PROXY_HTTP"
+            }
+            if (env.PROXY_HTTPs) {
+                proxies << "https_proxy=$PROXY_HTTPS"
+            }
+            if (env.PROXY_NO) {
+                proxies << "no_proxy=$PROXY_NO"
+            }
+            envVariables.addAll(proxies)
+        }
+    }
+    envVariables.addAll(envVars)
+    withEnv(envVariables) {
+        body.call()
+    }
+}
