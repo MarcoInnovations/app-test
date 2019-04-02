@@ -54,22 +54,13 @@ pipeline {
                     withProxyEnv() {
                         withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
                             script {
-    //                            // def MY_APP_NAME_PARAMETERS = readYaml file: '$PRODUCT_DOMAIN_NAME-parameters.yaml'
-                                // def jenkins_parameters = readYaml file: '/var/lib/jenkins/workspace/Infrastructure/Kubernetes_Install_EKS_Operations_Account/operations/us-east-1/env-eks/jenkins/parameters.yaml'
-
-                                // println "Getting domain name"
-                                // def r53DomainName = sh(script: "aws route53 get-hosted-zone --id " + jenkins_parameters.jxDomainHostedZoneID + " --output text --query 'HostedZone.Name'", 
-                                //                        returnStdout: true).trim().replaceAll("\\.\$", "")
-                                // def my_app_url = "$PRODUCT_DOMAIN_NAME." + jenkins_parameters.jxDomainAliasPrefix + "." + r53DomainName
-                                // println r53DomainName
-                                // println my_app_url
                                 
                                 sh """
                                 #!/bin/bash
                                 helm repo add app-demo 'https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm-app'
                                 helm repo update
                                 helm install --replace --wait --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME app-demo/helloworld-app
-                                kubectl -n $PRODUCT_DOMAIN_NAME get svc $PRODUCT_DOMAIN_NAME
+                                # kubectl -n $PRODUCT_DOMAIN_NAME get svc $PRODUCT_DOMAIN_NAME
                                 """
                             }
                         }
