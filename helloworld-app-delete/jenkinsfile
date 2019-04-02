@@ -1,0 +1,72 @@
+#!groovy
+
+def K8S_FLAVOR = "eks"
+def MY_APP_NAME_PARAMETERS = "$PRODUCT_DOMAIN_NAME-parameters"
+
+pipeline {
+    agent any
+    stages {
+
+        stage('Get K8s cluster flavor') {
+            steps {
+                script {
+                    K8S_CLUSTER_NAME = "arn:aws:eks:$AWS_REGION:$AWS_APPLICATION_ACCOUNT_NUMBER:cluster/$AWS_REGION-$PRODUCT_DOMAIN_NAME-$ENVIRONMENT_TYPE"
+                }
+                println K8S_CLUSTER_NAME
+            }
+        }
+
+        stage('Switch kubectl context to app-account') {
+            steps {
+                dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
+                    withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                        script {
+                            sh "kubectl config use-context $K8S_CLUSTER_NAME"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy application') {
+            steps {
+                dir("operations/$AWS_REGION/env-$K8S_FLAVOR") {
+                    withProxyEnv() {
+                        withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER") {
+                            script {
+                                
+                                sh """
+                                #!/bin/bash
+                                helm delete --purge --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void withProxyEnv(List envVars = [], def body) {
+    List proxies = []
+    List envVaraibles = ['GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no']
+    withAWSParameterStore(credentialsId: '', namePrefixes: '', naming: 'relative', path: "/$PRODUCT_DOMAIN_NAME/$ENVIRONMENT_TYPE", recursive: true, regionName: "$AWS_REGION") {
+        script {
+            if (env.PROXY_HTTP) {
+                proxies << "http_proxy=$PROXY_HTTP"
+            }
+            if (env.PROXY_HTTPS) {
+                proxies << "https_proxy=$PROXY_HTTPS"
+            }
+            if (env.PROXY_NO) {
+                proxies << "no_proxy=$PROXY_NO"
+            }
+            envVaraibles.addAll(proxies)
+        }
+    }
+    envVaraibles.addAll(envVars)
+    withEnv(envVaraibles) {
+        body.call()
+    }
+}
