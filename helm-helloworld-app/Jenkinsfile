@@ -57,9 +57,9 @@ pipeline {
                                 
                                 sh """
                                 #!/bin/bash
-                                helm repo add app-demo 'https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm-app'
+                                helm repo add app-demo 'https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm-chart-helloworld'
                                 helm repo update
-                                helm install --replace --wait --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME app-demo/helloworld-app
+                                helm install --replace --wait --name $PRODUCT_DOMAIN_NAME --namespace $PRODUCT_DOMAIN_NAME helm-chart-helloworld/helloworld-app
                                 # kubectl -n $PRODUCT_DOMAIN_NAME get svc $PRODUCT_DOMAIN_NAME
                                 """
                             }

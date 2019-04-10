@@ -8,6 +8,6 @@ entries:
     digest: 22349433ef03d07c09d9c33000026d56ff2f606d82814fd3399bea33d8ff335f
     name: helloworld-app
     urls:
-    - https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm-app/helloworld-app-0.1.0.tgz
+    - https://raw.githubusercontent.com/MarcoInnovations/app-test/master/helm-chart-app/helloworld-app-0.1.0.tgz
     version: 0.1.1
 generated: 2019-04-01T20:34:45.610824-04:00
